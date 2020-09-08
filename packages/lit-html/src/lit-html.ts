@@ -241,6 +241,11 @@ export type TemplateResult = {
   values: unknown[];
 };
 
+export type CompiledTemplateResult = {
+  _$litType$: Template;
+  values: unknown[];
+};
+
 /**
  * Generates a template literal tag function that returns a TemplateResult with
  * the given result type.
@@ -357,6 +362,7 @@ export interface DirectiveParent {
   __directive?: Directive;
   __directives?: Array<Directive | undefined>;
 }
+export type LitTemplate = Template;
 
 /**
  * Returns an HTML string for the given TemplateStringsArray and result type
@@ -654,6 +660,7 @@ class TemplateImpl {
       }
       nodeIndex++;
     }
+    // console.log('Template', this);
   }
 
   // Overridden via `litHtmlPlatformSupport` to provide platform support.
@@ -1008,9 +1015,16 @@ class ChildPartImpl {
     this._$committedValue = value;
   }
 
-  private _commitTemplateResult(result: TemplateResult): void {
-    const {values, strings} = result;
-    const template = this._$getTemplate(strings, result);
+  private _commitTemplateResult(result: TemplateResult|CompiledTemplateResult): void {
+    const {values} = result;
+    let template: Template|undefined;
+    if (typeof result._$litType$ === 'number') {
+      const {strings} = result as TemplateResult;
+      template = this._$getTemplate(strings, result as TemplateResult);
+    } else {
+      template = (result as CompiledTemplateResult)._$litType$;
+    }
+    
     if ((this._$committedValue as TemplateInstance)?._$template === template) {
       (this._$committedValue as TemplateInstance)._update(values);
     } else {

@@ -14,7 +14,9 @@
 import {
   AttributePart,
   ChildPart,
+  CompiledTemplateResult,
   html,
+  LitTemplate,
   noChange,
   nothing,
   render,
@@ -47,7 +49,7 @@ suite('lit-html', () => {
   });
 
   const assertRender = (
-    r: TemplateResult,
+    r: TemplateResult|CompiledTemplateResult,
     expected: string,
     options?: RenderOptions
   ) => {
@@ -59,6 +61,21 @@ suite('lit-html', () => {
   const assertContent = (expected: string) => {
     assert.equal(stripExpressionComments(container.innerHTML), expected);
   };
+
+  suite('compiled', () => {
+    test.only('only text', () => {
+      const _$lit_template_1$: LitTemplate = {
+        _$element: document.createElement('template'),
+        _parts: [{_type: 2, _index: 0}],
+        _$createElement: undefined as unknown as LitTemplate['_$createElement'],
+      };
+      _$lit_template_1$._$element.innerHTML = '<!---->';
+      assertRender({
+        _$litType$: _$lit_template_1$,
+        values: ['A']
+      }, 'A');
+    });
+  });
 
   /**
    * These test the ability to insert the correct expression marker into the

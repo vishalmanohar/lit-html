@@ -14,6 +14,7 @@
     "benchmark:lit-html:kitchen-sink": "tach --config lit-html/kitchen-sink/tachometer.json",
     "benchmark:lit-html:kitchen-sink-nop-update": "tach --config lit-html/kitchen-sink/tachometer-nop-update.json",
     "benchmark:lit-html:kitchen-sink-render": "tach --config lit-html/kitchen-sink/tachometer-render.json",
+    "benchmark:lit-html:kitchen-sink-render-compiled": "tach --config lit-html/kitchen-sink/tachometer-render-compiled.json",
     "benchmark:lit-html:kitchen-sink-update": "tach --config lit-html/kitchen-sink/tachometer-update.json",
     "benchmark:lit-html:repeat": "tach --config lit-html/repeat/tachometer.json",
     "benchmark:lit-html:repeat-full": "tach --config lit-html/repeat/tachometer-full.json",
