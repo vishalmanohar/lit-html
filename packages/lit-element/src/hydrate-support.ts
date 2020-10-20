@@ -19,14 +19,20 @@
  */
 
 import {PropertyValues, UpdatingElement} from 'updating-element';
-import {render} from 'lit-html';
+import {render, RenderOptions} from 'lit-html';
 import {hydrate} from 'lit-html/hydrate.js';
 
 interface PatchableLitElement extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-new
   new (...args: any[]): PatchableLitElement;
-  createRenderRoot(): Element | ShadowRoot;
+  connectedCallback: void;
   _needsHydration: boolean;
+  hasUpdated: boolean;
+  $onHydrationCallbacks: (() => void)[] | undefined;
+  enableUpdating(): void;
+  render(): unknown;
+  renderRoot: HTMLElement | ShadowRoot;
+  _renderOptions: RenderOptions;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,11 +41,41 @@ interface PatchableLitElement extends HTMLElement {
 }: {
   LitElement: PatchableLitElement;
 }) => {
-  // Capture whether we need hydration or not
-  const createRenderRoot = LitElement.prototype.createRenderRoot;
-  LitElement.prototype.createRenderRoot = function () {
+
+  // Override `connectedCallback` to capture whether we need hydration, and
+  // defer `enableUpdate()` if we are in a host that has not yet updated
+  LitElement.prototype.connectedCallback = function(this: PatchableLitElement) {
     if (this.shadowRoot) {
       this._needsHydration = true;
+      // If element is pending hydration, in a shadow root, and it's host has
+      // not yet updated, add self to host's `$onHydrationCallbacks` list
+      // and wait for host to enable
+      const root = this.getRootNode();
+      if (root instanceof ShadowRoot) {
+        // This assumes hydration host is always another LitElement (or
+        // a base class implementing the `$onHydrationCallbacks` protocol)
+        const host = root.host as PatchableLitElement;
+        if (!host.hasUpdated) {
+          if (!host.$onHydrationCallbacks) {
+            host.$onHydrationCallbacks = [];
+          }
+          // Note there's an assumption that the only thing that the base
+          // connectedCallback does is call `enableUpdating()`; if that
+          // assumption changes we may want to just defer the entire
+          // `connectedCallback` via $onHydrationCallbacks queue.
+          host.$onHydrationCallbacks.push(() => this.enableUpdating());
+          return;
+        }
+      }
+    }
+    this.enableUpdating();
+  };
+
+  // If we've been server-side rendered, just return `this.shadowRoot`, don't
+  // the base implementation, which would also adopt styles (for now)
+  const createRenderRoot = LitElement.prototype.createRenderRoot;
+  LitElement.prototype.createRenderRoot = function (this: PatchableLitElement) {
+    if (this._needsHydration) {
       return this.shadowRoot;
     } else {
       return createRenderRoot.call(this);
@@ -47,7 +83,7 @@ interface PatchableLitElement extends HTMLElement {
   };
 
   // Hydrate on first update when needed
-  LitElement.prototype.update = function (changedProperties: PropertyValues) {
+  LitElement.prototype.update = function (this: PatchableLitElement, changedProperties: PropertyValues) {
     const value = this.render();
     // Since this is a patch, we can't call super.update()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +91,11 @@ interface PatchableLitElement extends HTMLElement {
     if (this._needsHydration) {
       this._needsHydration = false;
       hydrate(value, this.renderRoot, this._renderOptions);
+      // Flush queue of children pending hydration
+      if (this.$onHydrationCallbacks) {
+        this.$onHydrationCallbacks.forEach((cb) => cb());
+        this.$onHydrationCallbacks = undefined;
+      }
     } else {
       render(value, this.renderRoot, this._renderOptions);
     }
