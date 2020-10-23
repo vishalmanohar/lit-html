@@ -41,10 +41,11 @@ interface PatchableLitElement extends HTMLElement {
 }: {
   LitElement: PatchableLitElement;
 }) => {
-
   // Override `connectedCallback` to capture whether we need hydration, and
   // defer `enableUpdate()` if we are in a host that has not yet updated
-  LitElement.prototype.connectedCallback = function(this: PatchableLitElement) {
+  LitElement.prototype.connectedCallback = function (
+    this: PatchableLitElement
+  ) {
     if (this.shadowRoot) {
       this._needsHydration = true;
       // If element is pending hydration, in a shadow root, and it's host has
@@ -55,6 +56,10 @@ interface PatchableLitElement extends HTMLElement {
         // This assumes hydration host is always another LitElement (or
         // a base class implementing the `$onHydrationCallbacks` protocol)
         const host = root.host as PatchableLitElement;
+        // TODO: Although we want the `onHydrationCallbacks` to be an
+        // interoperable protocol, this flag is pretty UpdatingElement-specific;
+        // should consider introduce a less-"UpdatingElement"-specific flag for
+        // the protocol
         if (!host.hasUpdated) {
           if (!host.$onHydrationCallbacks) {
             host.$onHydrationCallbacks = [];
@@ -72,7 +77,7 @@ interface PatchableLitElement extends HTMLElement {
   };
 
   // If we've been server-side rendered, just return `this.shadowRoot`, don't
-  // the base implementation, which would also adopt styles (for now)
+  // call the base implementation, which would also adopt styles (for now)
   const createRenderRoot = LitElement.prototype.createRenderRoot;
   LitElement.prototype.createRenderRoot = function (this: PatchableLitElement) {
     if (this._needsHydration) {
@@ -83,7 +88,10 @@ interface PatchableLitElement extends HTMLElement {
   };
 
   // Hydrate on first update when needed
-  LitElement.prototype.update = function (this: PatchableLitElement, changedProperties: PropertyValues) {
+  LitElement.prototype.update = function (
+    this: PatchableLitElement,
+    changedProperties: PropertyValues
+  ) {
     const value = this.render();
     // Since this is a patch, we can't call super.update()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

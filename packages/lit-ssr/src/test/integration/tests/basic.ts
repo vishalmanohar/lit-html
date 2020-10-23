@@ -3906,7 +3906,9 @@ export const tests: {[name: string]: SSRTest} = {
           prop = 'from2';
           render() {
             renderOrder.push(this.localName);
-            return html`le-order2:${this.prop}<le-order3 .prop=${this.prop}></le-order3>`;
+            return html`le-order2:${this.prop}<le-order3
+                .prop=${this.prop}
+              ></le-order3>`;
           }
         }
         customElements.define('le-order2', LEOrder2);
@@ -3915,7 +3917,9 @@ export const tests: {[name: string]: SSRTest} = {
           prop = 'from1';
           render() {
             renderOrder.push(this.localName);
-            return html`le-order1:${this.prop}<le-order2 .prop=${this.prop}></le-order2>`;
+            return html`le-order1:${this.prop}<le-order2
+                .prop=${this.prop}
+              ></le-order2>`;
           }
         }
         customElements.define('le-order1', LEOrder1);
@@ -3929,11 +3933,19 @@ export const tests: {[name: string]: SSRTest} = {
           async check(assert: Chai.Assert, dom: HTMLElement) {
             const el1 = dom.querySelector('le-order1') as LitElement;
             await el1.updateComplete;
-            const el2 = el1?.shadowRoot?.querySelector('le-order2') as LitElement;
+            const el2 = el1?.shadowRoot?.querySelector(
+              'le-order2'
+            ) as LitElement;
             await el2.updateComplete;
-            const el3 = el2?.shadowRoot?.querySelector('le-order3') as LitElement;
+            const el3 = el2?.shadowRoot?.querySelector(
+              'le-order3'
+            ) as LitElement;
             await el3.updateComplete;
-            assert.deepEqual(renderOrder, ['le-order1', 'le-order2', 'le-order3']);
+            assert.deepEqual(renderOrder, [
+              'le-order1',
+              'le-order2',
+              'le-order3',
+            ]);
           },
           html: {
             root: `<le-order1></le-order1>`,
@@ -3942,8 +3954,8 @@ export const tests: {[name: string]: SSRTest} = {
               'le-order2': {
                 root: `le-order2:from1\n<le-order3></le-order3>`,
                 'le-order3': {
-                  root: 'le-order3:from1'
-                }
+                  root: 'le-order3:from1',
+                },
               },
             },
           },
@@ -3952,5 +3964,4 @@ export const tests: {[name: string]: SSRTest} = {
       stableSelectors: ['le-order1'],
     };
   },
-
 };
