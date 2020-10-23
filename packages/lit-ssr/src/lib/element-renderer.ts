@@ -73,19 +73,19 @@ export abstract class ElementRenderer {
   /**
    * Render a single element's ShadowRoot children.
    */
-  abstract renderShadow(): IterableIterator<string>;
+  abstract renderShadow(_renderInfo: RenderInfo): IterableIterator<string>;
 
   /**
    * Render an element's light DOM children.
    */
-  abstract renderLight(renderInfo: RenderInfo): IterableIterator<string>;
+  abstract renderLight(_renderInfo: RenderInfo): IterableIterator<string>;
 
   /**
    * Render an element's attributes.
    *
    * Default implementation serializes all attributes on the element instance.
    */
-  *renderAttributes(): IterableIterator<string> {
+  *renderAttributes(_renderInfo: RenderInfo): IterableIterator<string> {
     const {attributes} = this.element;
     for (
       let i = 0, name, value;

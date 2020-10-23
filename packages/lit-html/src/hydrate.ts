@@ -105,9 +105,9 @@ type NodePartState =
  *                                 # by render(). Includes the digest of the
  *                                 # template
  *   <div class="TEST_X">
- *     <!--lit-bindings 0--> # Indicates there are attribute bindings here
- *                           # The number is the depth-first index of the parent
- *                           # node in the template.
+ *     <!--lit-node 0--> # Indicates there are attribute bindings here
+ *                       # The number is the depth-first index of the parent
+ *                       # node in the template.
  *     <!--lit-part-->  # Start marker for the ${x} expression
  *     TEST_Y
  *     <!--/lit-part-->  # End marker for the ${x} expression
@@ -162,10 +162,15 @@ export const hydrate = (
       // Create a new NodePart and push it onto the stack
       currentNodePart = openNodePart(rootValue, marker, stack, options);
       rootPart ??= currentNodePart;
-    } else if (markerText.startsWith('lit-bindings')) {
+    } else if (markerText.startsWith('lit-node')) {
       // Create and hydrate attribute parts into the current NodePart on the
-      // stack
+      // stack, if any
       createAttributeParts(marker, stack, options);
+      // Remove `defer-hydration` attribute, if any
+      const parent = marker.parentElement!;
+      if (parent.hasAttribute('defer-hydration')) {
+        parent.removeAttribute('defer-hydration');
+      }
     } else if (markerText.startsWith('/lit-part')) {
       // Close the current NodePart, and pop the previous one off the stack
       if (stack.length === 1 && currentNodePart !== rootPart) {
@@ -319,13 +324,12 @@ const createAttributeParts = (
 ) => {
   // Get the nodeIndex from DOM. We're only using this for an integrity
   // check right now, we might not need it.
-  const match = /lit-bindings (\d+)/.exec(node.data)!;
+  const match = /lit-node (\d+)/.exec(node.data)!;
   const nodeIndex = parseInt(match[1]);
 
   const state = stack[stack.length - 1];
   if (state.type === 'template-instance') {
     const instance = state.instance;
-    let foundOnePart = false;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // If the next template part is in attribute-position on the current node,
@@ -338,7 +342,6 @@ const createAttributeParts = (
       ) {
         break;
       }
-      foundOnePart = true;
 
       // The instance part is created based on the constructor saved in the
       // template part
@@ -372,11 +375,6 @@ const createAttributeParts = (
       state.templatePartIndex++;
       state.instancePartIndex += templatePart._strings.length - 1;
       instance._parts.push(instancePart);
-    }
-    if (!foundOnePart) {
-      // For a <!--lit-bindings--> marker there should be at least
-      // one attribute part.
-      throw new Error('internal error');
     }
   } else {
     throw new Error('internal error');

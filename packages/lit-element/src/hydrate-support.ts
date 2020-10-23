@@ -18,8 +18,10 @@
  * @packageDocumentation
  */
 
-import {PropertyValues, UpdatingElement} from 'updating-element';
+// Types only
+import {PropertyValues} from 'updating-element';
 import {render, RenderOptions} from 'lit-html';
+
 import {hydrate} from 'lit-html/hydrate.js';
 
 interface PatchableLitElement extends HTMLElement {
@@ -41,39 +43,46 @@ interface PatchableLitElement extends HTMLElement {
 }: {
   LitElement: PatchableLitElement;
 }) => {
+  const observedAttributes = Object.getOwnPropertyDescriptor(
+    Object.getPrototypeOf(LitElement),
+    'observedAttributes'
+  )!.get!;
+
+  // Add `defer-hydration` to observedAttributes
+  Object.defineProperty(LitElement, 'observedAttributes', {
+    get() {
+      return [...observedAttributes.call(this), 'defer-hydration'];
+    },
+  });
+
+  // Enable element when 'defer-hydration' attribute is removed
+  const attributeChangedCallback =
+    LitElement.prototype.attributeChangedCallback;
+  LitElement.prototype.attributeChangedCallback = function (
+    name: string,
+    old: string | null,
+    value: string | null
+  ) {
+    if (name === 'defer-hydration' && value === null) {
+      this.enableUpdating();
+    } else {
+      attributeChangedCallback.call(this, name, old, value);
+    }
+  };
+
   // Override `connectedCallback` to capture whether we need hydration, and
-  // defer `enableUpdate()` if we are in a host that has not yet updated
+  // defer `enableUpdate()` if the 'defer-hydration' attribute is set
   LitElement.prototype.connectedCallback = function (
     this: PatchableLitElement
   ) {
     if (this.shadowRoot) {
       this._needsHydration = true;
-      // If element is pending hydration, in a shadow root, and it's host has
-      // not yet updated, add self to host's `$onHydrationCallbacks` list
-      // and wait for host to enable
-      const root = this.getRootNode();
-      if (root instanceof ShadowRoot) {
-        // This assumes hydration host is always another LitElement (or
-        // a base class implementing the `$onHydrationCallbacks` protocol)
-        const host = root.host as PatchableLitElement;
-        // TODO: Although we want the `onHydrationCallbacks` to be an
-        // interoperable protocol, this flag is pretty UpdatingElement-specific;
-        // should consider introduce a less-"UpdatingElement"-specific flag for
-        // the protocol
-        if (!host.hasUpdated) {
-          if (!host.$onHydrationCallbacks) {
-            host.$onHydrationCallbacks = [];
-          }
-          // Note there's an assumption that the only thing that the base
-          // connectedCallback does is call `enableUpdating()`; if that
-          // assumption changes we may want to just defer the entire
-          // `connectedCallback` via $onHydrationCallbacks queue.
-          host.$onHydrationCallbacks.push(() => this.enableUpdating());
-          return;
-        }
-      }
     }
-    this.enableUpdating();
+    // If the outer scope of this element has not yet been hydrated, wait until
+    // 'defer-hydration' attribute has been removed to enable
+    if (!this.hasAttribute('defer-hydration')) {
+      this.enableUpdating();
+    }
   };
 
   // If we've been server-side rendered, just return `this.shadowRoot`, don't
@@ -88,14 +97,15 @@ interface PatchableLitElement extends HTMLElement {
   };
 
   // Hydrate on first update when needed
+  const update = Object.getPrototypeOf(LitElement.prototype).update;
   LitElement.prototype.update = function (
     this: PatchableLitElement,
     changedProperties: PropertyValues
   ) {
     const value = this.render();
-    // Since this is a patch, we can't call super.update()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (UpdatingElement.prototype as any).update.call(this, changedProperties);
+    // Since this is a patch, we can't call super.update(), so we capture
+    // it off the proto chain and call it instead
+    update.call(this, changedProperties);
     if (this._needsHydration) {
       this._needsHydration = false;
       hydrate(value, this.renderRoot, this._renderOptions);
