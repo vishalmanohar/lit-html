@@ -27,10 +27,7 @@ import {hydrate} from 'lit-html/hydrate.js';
 interface PatchableLitElement extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-new
   new (...args: any[]): PatchableLitElement;
-  connectedCallback: void;
   _needsHydration: boolean;
-  hasUpdated: boolean;
-  $onHydrationCallbacks: (() => void)[] | undefined;
   enableUpdating(): void;
   render(): unknown;
   renderRoot: HTMLElement | ShadowRoot;
@@ -38,7 +35,7 @@ interface PatchableLitElement extends HTMLElement {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any)['litElementHydrateSupport'] = ({
+(globalThis as any)['litElementHydrateSupport'] ??= ({
   LitElement,
 }: {
   LitElement: PatchableLitElement;
@@ -109,11 +106,6 @@ interface PatchableLitElement extends HTMLElement {
     if (this._needsHydration) {
       this._needsHydration = false;
       hydrate(value, this.renderRoot, this._renderOptions);
-      // Flush queue of children pending hydration
-      if (this.$onHydrationCallbacks) {
-        this.$onHydrationCallbacks.forEach((cb) => cb());
-        this.$onHydrationCallbacks = undefined;
-      }
     } else {
       render(value, this.renderRoot, this._renderOptions);
     }
