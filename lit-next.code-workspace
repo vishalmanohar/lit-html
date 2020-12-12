@@ -21,9 +21,13 @@
 			"path": "packages/localize"
 		},
 		{
-      "name": "labs",
-      "path": "packages/labs"
-    },
+			"name": "compiler",
+			"path": "packages/compiler"
+		},
+		{
+			"name": "labs",
+			"path": "packages/labs"
+		},
 		{
 			"name": "tests",
 			"path": "packages/tests"
