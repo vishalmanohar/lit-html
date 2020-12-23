@@ -248,7 +248,7 @@ export function extractTemplate(
   file: ts.SourceFile
 ): ResultOrError<ExtractedTemplate, ts.DiagnosticWithLocation> {
   if (isStaticString(templateArg)) {
-    // E.g. 'Hello World'
+    // E.g. 'Hello World', `Hello World`
     return {
       result: {
         template: templateArg,
@@ -271,30 +271,13 @@ export function extractTemplate(
         },
       };
     }
-    // E.g. html`Hello ${who}`
-    return {
-      error: createDiagnostic(
-        file,
-        templateArg,
-        `To use a variable, pass an arrow function.`
-      ),
-    };
+    // E.g. html`Hello <b>${name}</b>`
+    return paramTemplate(templateArg, file);
   }
 
   if (ts.isTemplateExpression(templateArg)) {
     // E.g. `Hello ${who}`
-    return {
-      error: createDiagnostic(
-        file,
-        templateArg,
-        `To use a variable, pass an arrow function.`
-      ),
-    };
-  }
-
-  if (ts.isArrowFunction(templateArg)) {
-    // E.g. (who) => html`Hello ${who}`
-    return functionTemplate(templateArg, file);
+    return paramTemplate(templateArg, file);
   }
 
   return {
@@ -335,79 +318,44 @@ export function generateMsgIdFromAstNode(
 
 /**
  * Extract a message from calls like:
- *   (name) => `Hello ${name}`
- *   (name) => html`Hello <b>${name}</b>`
+ *   str`Hello ${name}`
+ *   html`Hello <b>${name}</b>`
  */
-function functionTemplate(
-  fn: ts.ArrowFunction,
+function paramTemplate(
+  arg: ts.TaggedTemplateExpression | ts.TemplateExpression,
   file: ts.SourceFile
 ): ResultOrError<ExtractedTemplate, ts.DiagnosticWithLocation> {
-  if (fn.parameters.length === 0) {
-    return {
-      error: createDiagnostic(
-        file,
-        fn,
-        `Expected template function to have at least one parameter. ` +
-          `Use a regular string or lit-html template if there are no variables.`
-      ),
-    };
+  const parts: Array<string | {identifier: string}> = [];
+  const template = ts.isTaggedTemplateExpression(arg) ? arg.template : arg;
+  if (ts.isNoSubstitutionTemplateLiteral(template)) {
+    throw new Error('TODO');
   }
-  const params = [];
-  for (const param of fn.parameters) {
-    if (!ts.isIdentifier(param.name)) {
+  const spans = template.templateSpans;
+  parts.push(template.head.text);
+  const printer = ts.createPrinter({
+    newLine: ts.NewLineKind.LineFeed,
+    noEmitHelpers: true,
+  });
+  for (const span of spans) {
+    if (!ts.isIdentifier(span.expression)) {
       return {
         error: createDiagnostic(
           file,
-          param,
-          `Expected template function parameter to be an identifier`
+          span,
+          `Please only use identifier, string, or getprop`
         ),
       };
     }
-    params.push(param.name.text);
-  }
-  const body = fn.body;
-  if (
-    !ts.isTemplateExpression(body) &&
-    !ts.isNoSubstitutionTemplateLiteral(body) &&
-    !isLitTemplate(body)
-  ) {
-    return {
-      error: createDiagnostic(
-        file,
-        body,
-        `Expected template function to return a template string literal ` +
-          `or a lit-html template, without braces`
+    parts.push({
+      identifier: printer.printNode(
+        ts.EmitHint.Unspecified,
+        span.expression,
+        file
       ),
-    };
+    });
+    parts.push(span.literal.text);
   }
-  const template = isLitTemplate(body) ? body.template : body;
-  const parts: Array<string | {identifier: string}> = [];
-  if (ts.isTemplateExpression(template)) {
-    const spans = template.templateSpans;
-    parts.push(template.head.text);
-    for (const span of spans) {
-      if (
-        !ts.isIdentifier(span.expression) ||
-        !params.includes(span.expression.text)
-      ) {
-        return {
-          error: createDiagnostic(
-            file,
-            span.expression,
-            `Placeholder must be one of the following identifiers: ` +
-              params.join(', ')
-          ),
-        };
-      }
-      const identifier = span.expression.text;
-      parts.push({identifier});
-      parts.push(span.literal.text);
-    }
-  } else {
-    // A NoSubstitutionTemplateLiteral. No spans.
-    parts.push(template.text);
-  }
-  const isLit = isLitTemplate(body);
+  const isLit = isLitTemplate(template);
   const contents = isLit
     ? replaceExpressionsAndHtmlWithPlaceholders(parts)
     : parts.map((part) =>
@@ -419,7 +367,6 @@ function functionTemplate(
     result: {
       template,
       contents: combineAdjacentPlaceholders(contents),
-      params,
       isLitTemplate: isLit,
     },
   };

@@ -153,13 +153,13 @@ test('HTML message with comment', (t) => {
 test('parameterized string message', (t) => {
   const src = `
     import {msg} from './lit-localize.js';
-    msg((name: string) => \`Hello \${name}\`, {id: 'greeting', args: ["friend"]});
+    const name = "friend";
+    msg(\`Hello \${name}\`, {id: 'greeting'});
   `;
   checkAnalysis(t, src, [
     {
       name: 'greeting',
       contents: ['Hello ', {untranslatable: '${name}'}],
-      params: ['name'],
     },
   ]);
 });
@@ -167,13 +167,13 @@ test('parameterized string message', (t) => {
 test('parameterized string message (auto ID)', (t) => {
   const src = `
     import {msg} from './lit-localize.js';
-    msg((name: string) => \`Hello \${name}\`);
+    const name = "friend";
+    msg(\`Hello \${name}\`);
   `;
   checkAnalysis(t, src, [
     {
       name: 'saed7d3734ce7f09d',
       contents: ['Hello ', {untranslatable: '${name}'}],
-      params: ['name'],
     },
   ]);
 });
@@ -181,7 +181,8 @@ test('parameterized string message (auto ID)', (t) => {
 test('parameterized HTML message', (t) => {
   const src = `
     import {msg} from './lit-localize.js';
-    msg((name: string) => html\`<b>Hello \${name}</b>\`, {id: 'greeting', args: ["friend"]);
+    const name = "Friend";
+    msg(html\`<b>Hello \${friend}</b>\`, {id: 'greeting'});
   `;
   checkAnalysis(t, src, [
     {
@@ -189,9 +190,8 @@ test('parameterized HTML message', (t) => {
       contents: [
         {untranslatable: '<b>'},
         'Hello ',
-        {untranslatable: '${name}</b>'},
+        {untranslatable: '${friend}</b>'},
       ],
-      params: ['name'],
     },
   ]);
 });
