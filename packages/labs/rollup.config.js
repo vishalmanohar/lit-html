@@ -20,6 +20,8 @@ export default litProdConfig({
     'index',
     'frameworks/react/create-component',
     'controllers/async-task',
+    'controllers/resize',
+    'demos/resize',
   ],
   external: ['@lit/reactive-element', 'lit-html', 'lit-element'],
 });
