@@ -92,14 +92,14 @@ const stableProperties = {
   // lit-element: ReactiveElement (used bby ssr-support)
   _$changedProperties: 'P',
   // lit-html: ChildPart, AttributePart, TemplateInstance, Directive (accessed by
-  // disconnectable-directive)
+  // async-directive)
   _$parent: 'Q',
   _$disconnetableChildren: 'R',
-  // disconnectable-directive: DisconnectableDirective
+  // async-directive: AsyncDirective
   _$setDirectiveConnected: 'S',
-  // lit-html: ChildPart (added by disconnectable-directive)
+  // lit-html: ChildPart (added by async-directive)
   _$setChildPartConnected: 'T',
-  // lit-html: ChildPart (added by disconnectable-directive)
+  // lit-html: ChildPart (added by async-directive)
   _$reparentDisconnectables: 'U',
   // lit-html: ChildPart (used by directive-helpers)
   _$clear: 'V',
@@ -379,6 +379,9 @@ const litMonoBundleConfig = ({
         'const ENABLE_EXTRA_SECURITY_HOOKS = false',
       'const ENABLE_SHADYDOM_NOPATCH = true':
         'const ENABLE_SHADYDOM_NOPATCH = false',
+      // For downleveled ES5 build of polyfill-support
+      'var ENABLE_SHADYDOM_NOPATCH = true':
+        'var ENABLE_SHADYDOM_NOPATCH = false',
     }),
     // This plugin automatically composes the existing TypeScript -> raw JS
     // sourcemap with the raw JS -> minified JS one that we're generating here.
