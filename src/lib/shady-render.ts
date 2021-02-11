@@ -41,7 +41,7 @@ const getTemplateCacheKey = (type: string, scopeName: string) =>
 
 let compatibleShadyCSSVersion = true;
 
-if (typeof window.ShadyCSS === 'undefined') {
+if (typeof window === 'undefined' || typeof window.ShadyCSS === 'undefined') {
   compatibleShadyCSSVersion = false;
 } else if (typeof window.ShadyCSS.prepareTemplateDom === 'undefined') {
   console.warn(
@@ -77,7 +77,7 @@ const shadyTemplateFactory = (scopeName: string) =>
       if (template === undefined) {
         const element = result.getTemplateElement();
         if (compatibleShadyCSSVersion) {
-          window.ShadyCSS!.prepareTemplateDom(element, scopeName);
+          typeof window !== 'undefined' && window.ShadyCSS!.prepareTemplateDom(element, scopeName);
         }
         template = new Template(result, element);
         templateCache.keyString.set(key, template);
@@ -147,7 +147,7 @@ const prepareTemplateStyles =
         // template. However, this is not a problem because we only create the
         // template for the purpose of supporting `prepareAdoptedCssText`,
         // which doesn't support @apply at all.
-        window.ShadyCSS!.prepareTemplateStyles(templateElement, scopeName);
+        typeof window != 'undefined' && window.ShadyCSS!.prepareTemplateStyles(templateElement, scopeName);
         return;
       }
       const condensedStyle = document.createElement('style');
@@ -174,9 +174,9 @@ const prepareTemplateStyles =
       // Note, it's important that ShadyCSS gets the template that `lit-html`
       // will actually render so that it can update the style inside when
       // needed (e.g. @apply native Shadow DOM case).
-      window.ShadyCSS!.prepareTemplateStyles(templateElement, scopeName);
+      typeof window != 'undefined' && window.ShadyCSS!.prepareTemplateStyles(templateElement, scopeName);
       const style = content.querySelector('style');
-      if (window.ShadyCSS!.nativeShadow && style !== null) {
+      if (typeof window != 'undefined' && window.ShadyCSS!.nativeShadow && style !== null) {
         // When in native Shadow DOM, ensure the style created by ShadyCSS is
         // included in initially rendered output (`renderedDOM`).
         renderedDOM.insertBefore(style.cloneNode(true), renderedDOM.firstChild);
@@ -312,6 +312,6 @@ export const render =
       // so we leave it up to the user to call `ShadyCSS.styleElement`
       // for dynamic changes.
       if (!hasRendered && needsScoping) {
-        window.ShadyCSS!.styleElement((container as ShadowRoot).host);
+        typeof window != 'undefined' && window.ShadyCSS!.styleElement((container as ShadowRoot).host);
       }
     };
